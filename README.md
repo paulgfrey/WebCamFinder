@@ -1,3 +1,4 @@
+<PRE>
 WebCamFinder
 ============
 
@@ -15,3 +16,4 @@ You can also include it as part of your project:
 3.  Use the method findList() to find cameras on your local network.  This method returns a List of WebCamBean objects.
 4.  An alternative method to allow easier searching by camera ID is findMap().  This method returns a Map of WebCamBean objects with the Camera ID as the key.
 5.  You can use the method sendInitRequest(WebCamBean newWebCamBean, String originalIP, String factoryUserName, String factoryPassword) to set the camera's network settings.
+</PRE>
