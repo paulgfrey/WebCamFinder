@@ -36,6 +36,12 @@ public abstract class WebCamFinderUtils {
 		return(buf.array());
 	}
 	
+	/**
+	 * Converts an INT16 to a short.
+	 * 
+	 * @param bytes
+	 * @return
+	 */
 	public final static short convINT16ToShort(byte[] bytes) {
 		ByteBuffer buf = ByteBuffer.wrap(bytes);
 		buf.order(ByteOrder.LITTLE_ENDIAN);

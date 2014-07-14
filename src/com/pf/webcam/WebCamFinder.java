@@ -332,20 +332,143 @@ public class WebCamFinder {
 		return rtnBean;		
 	}
 	
+	public static String getUsage() {
+		return("java -jar webcamfinder.jar [-cameraID=<camera ID> -newIP=<IP Address> [-newPort=<port number> -factoryUserName=<user name> " + 
+					"-factoryPassword=<password> -newGateway=<IP Address> -newDNS=<IP Address> -newNetMask=<Net Mask>]]");
+	}
+	
 	/**
 	 * @param args
 	 */
 	public static void main(String[] args) {
 		WebCamFinder webCamFinder = new WebCamFinder();
 		try {
-			List<WebCamBean> foundList = webCamFinder.findList();
-			for(WebCamBean webCamBean: foundList) {
-				System.out.println(webCamBean);
+			if(args.length == 0) {
+				List<WebCamBean> foundList = webCamFinder.findList();
+				for(WebCamBean webCamBean: foundList) {
+					System.out.println(webCamBean);
+				}
+			}
+			else {
+				String originalIP = null;
+				String cameraID = null;
+				String factoryUserName = "admin";
+				String factoryPassword = "123456";
+				String newIPAddress = null;
+				String newNetMask = "255.255.255.0";
+				String newDNS = null;
+				String newGateway = "192.168.1.1";
+				int newPort = 80;
+				
+				for(String arg : args) {
+					if(arg.equalsIgnoreCase("-?")) {
+						System.err.println(getUsage());
+						System.exit(-1);
+					}
+					else if(arg.contains("=")) {
+						String[] split = arg.split("=");
+						if("-cameraID".equalsIgnoreCase(split[0])) {
+							cameraID = split[1];
+						}
+						else if("-factoryUserName".equalsIgnoreCase(split[0])) {
+							factoryUserName = split[1];
+						}
+						else if("-factoryPassword".equalsIgnoreCase(split[0])) {
+							factoryPassword = split[1];
+						}
+						else if("-newIP".equalsIgnoreCase(split[0])) {
+							newIPAddress = split[1];
+						}
+						else if("-newGateway".equalsIgnoreCase(split[0])) {
+							newGateway = split[1];
+						}
+						else if("-newNetMask".equalsIgnoreCase(split[0])) {
+							newNetMask = split[1];
+						}
+						else if("-newDNS".equalsIgnoreCase(split[0])) {
+							newDNS = split[1];
+						}
+						else if("-newPort".equalsIgnoreCase(split[0])) {
+							newPort = Integer.parseInt(split[1]);
+						}
+					}
+				}
+				if(newIPAddress == null || cameraID == null) {
+					System.err.println(getUsage());
+					System.exit(-1);
+				}
+				Map<String, WebCamBean> foundMap = null;
+				int retryCount = 0;
+				WebCamBean webCamBean = null;
+				do {
+					foundMap = webCamFinder.findMap();
+					webCamBean = foundMap.get(cameraID);
+					retryCount++;
+				}
+				while(webCamBean == null && retryCount < 3);
+				if(webCamBean == null) {
+					System.err.println("Please check the camera ID you passed because it was not found, cameraID=" + cameraID);
+					System.exit(-1);
+				}
+				else {
+					System.out.println("Camera ID " + cameraID + " found!");
+					System.out.println("Current settings: " + webCamBean);
+					originalIP = webCamBean.getIpAddress();
+					WebCamBean newWebCamBean = (WebCamBean) webCamBean.clone();
+					newWebCamBean.setIpAddress(newIPAddress);
+					newWebCamBean.setGatewayIP(newGateway);
+					newWebCamBean.setDNS(newDNS);
+					newWebCamBean.setSubnetMask(newNetMask);
+					newWebCamBean.setCameraPort("" + newPort);
+					
+					System.out.println("Sending new settings: " + newWebCamBean);
+					int rtnVal = SUCCESS;
+					if((rtnVal = webCamFinder.sendInitRequest(newWebCamBean, originalIP, factoryUserName, factoryPassword)) == SUCCESS) {
+						System.out.println("Send Init_Req was successful.");
+						System.out.println("Sleeping 60 seconds...");
+						try {
+							Thread.sleep((60L * 1000L));
+						}
+						catch(InterruptedException ie) {
+							System.err.println("Thread interrupted!");
+						}
+						retryCount = 0;
+						webCamBean = null;
+						do {
+							foundMap = webCamFinder.findMap();
+							webCamBean = foundMap.get(cameraID);
+							retryCount++;
+						}
+						while(webCamBean == null && retryCount < 3);
+						if(webCamBean == null) {
+							System.err.println("Camera ID " + cameraID + " not found!!");
+							System.exit(-1);
+						}
+						else {
+							System.out.println("New webcam settings: " + webCamBean);
+						}
+					}
+					else {
+						switch(rtnVal) {
+						case USER_ERROR:
+							System.err.println("User error encountered. Please check your settings.");
+							System.exit(-1);
+						case PASSWORD_ERROR:
+							System.err.println("Password error encountered. Please check your settings.");
+							System.exit(-1);
+						case PRI_ERROR:
+							System.err.println("PRI error encountered. Please check your settings.");
+							System.exit(-1);
+						default:
+							System.err.println("Unknown error encountered. Please check your settings.");
+							System.exit(-1);
+						}
+					}
+				}
 			}
 		}
 		catch(Exception e) {
 			e.printStackTrace(System.err);
 		}
 	}
-
 }
